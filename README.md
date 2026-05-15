@@ -1,6 +1,6 @@
 # 🔭 AgentScope — Open-Source LLM Observability Framework
 
-> Trace every LLM call. Score every output. Version every prompt. **100% free. Runs on a laptop.**
+> Trace every LLM call. Score every output. Version every prompt. 
 
 [![CI](https://github.com/yourusername/agentscope/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/agentscope/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
@@ -36,10 +36,16 @@ AgentScope is an open-source observability and evaluation platform for LLM agent
 
 ## Quickstart (3 commands)
 
-```bash
-git clone https://github.com/yourusername/agentscope.git
-cd agentscope
-python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
+git clone https://github.com/haarikaalla/llm-trace-pilot.git
+cd llm-trace-pilot
+
+# Mac/Linux
+python -m venv venv && source venv/bin/activate
+
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
 pip install -r requirements.txt
 
 # Generate demo traces
@@ -99,7 +105,7 @@ history = reg.history("summarize")  # all versions
 
 ---
 
-## Architecture
+## Project structure
 
 ```
 agentscope/
@@ -113,6 +119,45 @@ agentscope/
 └── tests/           # Full pytest test suite
 ```
 
+
+## Architecture
+┌─────────────────────────────────────────────────────────────┐
+│                     Your AI Agent Code                       │
+│                                                              │
+│   @trace(name="fetch", model="llama3.2")                    │
+│   def fetch_context(query): ...                             │
+│                                                              │
+│   @trace(name="summarize", model="llama3.2")                │
+│   def summarize(prompt): ...                                │
+└───────────────────┬─────────────────────────────────────────┘
+                    │  automatic — no manual input needed
+                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    llm-trace-pilot Core                      │
+│                                                              │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │   Tracer    │  │  Evaluator   │  │ Prompt Registry  │   │
+│  │             │  │              │  │                  │   │
+│  │ @trace      │  │ LLM-as-judge │  │ version 1, 2, 3  │   │
+│  │ decorator   │  │ scores every │  │ SHA-256 hashed   │   │
+│  │ session IDs │  │ output 1–10  │  │ template render  │   │
+│  └──────┬──────┘  └──────┬───────┘  └────────┬─────────┘   │
+│         └────────────────┴───────────────────┘              │
+│                           │                                  │
+│                    ┌──────▼──────┐                          │
+│                    │   SQLite    │                          │
+│                    │  Database   │                          │
+│                    └──────┬──────┘                          │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│               Live Dashboard  http://localhost:8080          │
+│                                                              │
+│  Cost over time  │  Eval score trends  │  Slowest steps     │
+│  Error heatmap   │  Recent traces      │  Token usage       │
+└─────────────────────────────────────────────────────────────┘
+
 ---
 
 ## Running Tests
@@ -123,7 +168,7 @@ pytest tests/ -v
 
 ---
 
-## Tech Stack (all free)
+## Tech Stack 
 
 | Component | Technology |
 |---|---|
