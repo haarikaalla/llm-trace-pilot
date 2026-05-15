@@ -2,7 +2,7 @@
 
 > Trace every LLM call. Score every output. Version every prompt. 
 
-[![CI](https://github.com/yourusername/agentscope/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/agentscope/actions)
+[![CI](https://github.com/haarikaalla/llm-trace-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/haarikaalla/llm-trace-pilot/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![SQLite](https://img.shields.io/badge/storage-SQLite-green)](https://sqlite.org)
