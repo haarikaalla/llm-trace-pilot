@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentScope — LLM Observability</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d0d0f;--bg2:#141417;--bg3:#1c1c21;--bg4:#242429;--border:#2a2a32;--text:#e8e8f0;--muted:#7070a0;--accent:#7c6aff;--green:#4fd1a0;--warn:#f5a623;--red:#ff5f5f;--blue:#4a9eff;--purple:#a78bfa;--teal:#2dd4bf}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;display:flex;min-height:100vh}
+/* SIDEBAR */
+.sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);padding:24px 14px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{font-size:18px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}.logo span{color:var(--accent)}
+.logo-tag{font-size:11px;color:var(--muted);margin-bottom:28px;display:block}
+.nav-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:13px;margin-bottom:2px;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover,.nav-item.active{background:var(--bg3);color:var(--text)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-left:auto;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sidebar-info{background:var(--bg3);border-radius:8px;padding:12px;font-size:11px;color:var(--muted);line-height:1.8;margin-top:auto}
+/* MAIN */
+.main{flex:1;padding:28px 32px;min-width:0}
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.5px}
+.page-title small{font-size:14px;font-weight:400;color:var(--muted);margin-left:10px}
+.refresh-btn{padding:6px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.stat.c-purple{border-color:rgba(124,106,255,.4);background:rgba(124,106,255,.06)}
+.stat.c-green {border-color:rgba(79,209,160,.35);background:rgba(79,209,160,.05)}
+.stat.c-warn  {border-color:rgba(245,166,35,.35); background:rgba(245,166,35,.05)}
+.stat.c-red   {border-color:rgba(255,95,95,.35);  background:rgba(255,95,95,.05)}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.stat-val{font-size:30px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600}
+.card-sub{font-size:11px;color:var(--muted)}
+.card-body{padding:20px}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.chart-wrap{position:relative;height:210px}
+/* HBARS */
+.hbar{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12px}
+.hbar-name{width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);flex-shrink:0}
+.hbar-track{flex:1;height:6px;background:var(--bg3);border-radius:3px}
+.hbar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--purple))}
+.hbar-val{font-size:11px;color:var(--muted);min-width:55px;text-align:right}
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3)}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid rgba(42,42,50,.5);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(28,28,33,.6)}
+.mono{font-family:'JetBrains Mono','Fira Code',monospace;font-size:11px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap}
+.chip-green{background:rgba(79,209,160,.15);color:var(--green);border:1px solid rgba(79,209,160,.25)}
+.chip-red  {background:rgba(255,95,95,.15); color:var(--red); border:1px solid rgba(255,95,95,.25)}
+.chip-blue {background:rgba(74,158,255,.15);color:var(--blue);border:1px solid rgba(74,158,255,.25)}
+.chip-purple{background:rgba(124,106,255,.15);color:var(--accent);border:1px solid rgba(124,106,255,.25)}
+.bar-inline{height:3px;border-radius:2px;background:var(--accent);display:inline-block;vertical-align:middle;margin-left:6px;opacity:.5}
+/* EMPTY */
+.empty{text-align:center;padding:40px;color:var(--muted)}
+.empty h3{color:var(--text);margin-bottom:8px;font-size:15px}
+.empty code{background:var(--bg3);color:var(--accent);padding:3px 8px;border-radius:5px;font-size:12px;font-family:monospace}
+@media(max-width:900px){.sidebar{display:none}.main{padding:16px}.stats-grid{grid-template-columns:1fr 1fr}.charts-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">Agent<span>Scope</span></div>
+  <span class="logo-tag">LLM Observability Platform</span>
+  <div class="nav-item active">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    Dashboard <span class="dot"></span>
+  </div>
+  <div class="nav-label">Info</div>
+  <div class="sidebar-info">
+    <strong style="color:var(--text)">AgentScope v1.0</strong><br>
+    Open-source LLM<br>Observability<br><br>
+    <span style="color:var(--green)">●</span> SQLite backend<br>
+    <span style="color:var(--green)">●</span> Ollama (free local)<br>
+    <span style="color:var(--green)">●</span> Zero cloud cost<br>
+    <span style="color:var(--green)">●</span> LLM-as-judge eval
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-head">
+    <div class="page-title">Dashboard <small>real-time LLM observability</small></div>
+    <button class="refresh-btn" onclick="location.reload()">↻ Refresh</button>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid">
+    <div class="stat c-purple">
+      <div class="stat-label">Total Traces</div>
+      <div class="stat-val" style="color:var(--accent)">{{ summary.total_traces or 0 }}</div>
+      <div class="stat-sub">{{ summary.total_sessions or 0 }} sessions · {{ summary.models_used or 0 }} models</div>
+    </div>
+    <div class="stat c-green">
+      <div class="stat-label">Total Cost</div>
+      <div class="stat-val" style="color:var(--green)">${{ summary.total_cost or '0.0000' }}</div>
+      <div class="stat-sub">USD · $0.00 for Ollama local</div>
+    </div>
+    <div class="stat c-warn">
+      <div class="stat-label">Avg Latency</div>
+      <div class="stat-val" style="color:var(--warn)">{{ summary.avg_latency or 0 }}<span style="font-size:14px;font-weight:400"> ms</span></div>
+      <div class="stat-sub">per LLM call</div>
+    </div>
+    <div class="stat c-red">
+      <div class="stat-label">Errors</div>
+      <div class="stat-val" style="color:var(--red)">{{ summary.total_errors or 0 }}</div>
+      <div class="stat-sub">failed traces</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-2">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-head">
+        <div><div class="card-title">Cost Over Time</div><div class="card-sub">Daily token spend (USD)</div></div>
+      </div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="costChart"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-head">
+        <div><div class="card-title">Eval Score Trends</div><div class="card-sub">LLM-as-judge scores (0–10)</div></div>
+      </div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="evalChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- SLOWEST STEPS -->
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Slowest Agent Steps</div><div class="card-sub">Average latency per named function (ms)</div></div>
+      <span class="chip chip-purple">{{ slowest_steps|length }} steps</span>
+    </div>
+    <div class="card-body">
+      {% if slowest_steps %}
+        {% set max_ms = slowest_steps[0].avg_ms or 1 %}
+        {% for s in slowest_steps %}
+        <div class="hbar">
+          <div class="hbar-name" title="{{ s.name }}">{{ s.name }}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:{{ [(s.avg_ms / max_ms * 100)|int, 4]|max }}%"></div></div>
+          <div class="hbar-val">{{ s.avg_ms|int }} ms</div>
+          <span class="chip {% if s.errors > 0 %}chip-red{% else %}chip-green{% endif %}">{{ s.calls }} calls{% if s.errors > 0 %} · {{ s.errors }} err{% endif %}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty"><h3>No data yet</h3><p>Run: <code>python examples/demo_agent.py</code></p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RECENT TRACES -->
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Recent Traces</div><div class="card-sub">Last 60 LLM calls</div></div>
+      <span class="chip chip-blue">{{ recent_traces|length }} shown</span>
+    </div>
+    {% if recent_traces %}
+    <table>
+      <thead><tr>
+        <th>ID</th><th>Session</th><th>Step Name</th><th>Model</th>
+        <th>Latency</th><th>Tokens</th><th>Cost</th><th>Status</th><th>Time</th>
+      </tr></thead>
+      <tbody>
+      {% for t in recent_traces %}
+      <tr>
+        <td><span class="mono" style="color:var(--accent)">{{ t.trace_id or '—' }}</span></td>
+        <td><span class="mono" style="color:var(--teal)">{{ t.session_id or '—' }}</span></td>
+        <td>{{ t.name or '—' }}</td>
+        <td><span style="color:var(--muted)">{{ t.model or '—' }}</span></td>
+        <td>
+          {{ t.latency_ms or 0 }}ms
+          <span class="bar-inline" style="width:{{ [((t.latency_ms or 0) // 80), 50]|min }}px"></span>
+        </td>
+        <td style="color:var(--muted)">{{ (t.input_tokens or 0) + (t.output_tokens or 0) }}</td>
+        <td style="color:var(--green)">${{ '%.5f'|format(t.cost_usd or 0) }}</td>
+        <td>
+          {% if t.error %}<span class="chip chip-red">✗ error</span>
+          {% else %}<span class="chip chip-green">✓ ok</span>{% endif %}
+        </td>
+        <td style="color:var(--muted)">{{ t.ts[11:19] if t.ts else '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <h3>No traces yet</h3>
+      <p style="margin-top:8px">Generate demo data:<br><br><code>python examples/demo_agent.py</code></p>
+    </div>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+const gc = 'rgba(255,255,255,0.05)';
+const tc = '#7070a0';
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:tc,font:{size:11},boxWidth:12,padding:14}}},
+  scales:{
+    x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:8}},
+    y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},beginAtZero:true}
+  }
+};
+
+// Cost chart
+const cd = {{ cost_by_day | tojson }};
+if(cd.length){
+  new Chart(document.getElementById('costChart'),{
+    type:'bar',
+    data:{
+      labels:cd.map(r=>r.day),
+      datasets:[{
+        label:'Cost USD',data:cd.map(r=>r.total_cost||0),
+        backgroundColor:'rgba(124,106,255,0.45)',borderColor:'#7c6aff',
+        borderWidth:1,borderRadius:4
+      }]
+    },
+    options:{...baseOpts}
+  });
+} else {
+  document.getElementById('costChart').parentElement.innerHTML=
+    '<div class="empty"><h3>No cost data</h3><p>Run the demo first</p></div>';
+}
+
+// Eval chart
+const ed = {{ eval_trend | tojson }};
+if(ed.length){
+  new Chart(document.getElementById('evalChart'),{
+    type:'line',
+    data:{
+      labels:ed.map(r=>r.day),
+      datasets:[
+        {label:'Accuracy',   data:ed.map(r=>r.avg_accuracy||0),   borderColor:'#4a9eff',backgroundColor:'rgba(74,158,255,.08)',tension:.4,fill:true,pointRadius:3},
+        {label:'Helpfulness',data:ed.map(r=>r.avg_helpfulness||0),borderColor:'#4fd1a0',backgroundColor:'rgba(79,209,160,.08)',tension:.4,fill:true,pointRadius:3},
+        {label:'Safety',     data:ed.map(r=>r.avg_safety||0),     borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.08)',tension:.4,fill:true,pointRadius:3},
+      ]
+    },
+    options:{...baseOpts,scales:{...baseOpts.scales,y:{...baseOpts.scales.y,min:0,max:10}}}
+  });
+} else {
+  document.getElementById('evalChart').parentElement.innerHTML=
+    '<div class="empty"><h3>No eval data</h3><p>Run: <code>python examples/run_evals.py</code></p></div>';
+}
+setTimeout(()=>location.reload(), 30000);
+</script>
+</body>
+</html>
