@@ -134,14 +134,10 @@ pytest tests/ -v
 | LLM Judge | Ollama (llama3.2 locally) |
 | CI/CD | GitHub Actions |
 
----
 
-## Contributing
-
-PRs welcome! See issues labeled `good first issue`.
 
 ---
 
 ## License
 
-MIT © 2025 — Use freely, star if useful ⭐
+MIT © 2025 
