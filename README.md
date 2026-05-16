@@ -121,42 +121,7 @@ agentscope/
 
 
 ## Architecture
-┌─────────────────────────────────────────────────────────────┐
-│                     Your AI Agent Code                       │
-│                                                              │
-│   @trace(name="fetch", model="llama3.2")                    │
-│   def fetch_context(query): ...                             │
-│                                                              │
-│   @trace(name="summarize", model="llama3.2")                │
-│   def summarize(prompt): ...                                │
-└───────────────────┬─────────────────────────────────────────┘
-                    │  automatic — no manual input needed
-                    ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    llm-trace-pilot Core                      │
-│                                                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │   Tracer    │  │  Evaluator   │  │ Prompt Registry  │   │
-│  │             │  │              │  │                  │   │
-│  │ @trace      │  │ LLM-as-judge │  │ version 1, 2, 3  │   │
-│  │ decorator   │  │ scores every │  │ SHA-256 hashed   │   │
-│  │ session IDs │  │ output 1–10  │  │ template render  │   │
-│  └──────┬──────┘  └──────┬───────┘  └────────┬─────────┘   │
-│         └────────────────┴───────────────────┘              │
-│                           │                                  │
-│                    ┌──────▼──────┐                          │
-│                    │   SQLite    │                          │
-│                    │  Database   │                          │
-│                    └──────┬──────┘                          │
-└───────────────────────────┼─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│               Live Dashboard  http://localhost:8080          │
-│                                                              │
-│  Cost over time  │  Eval score trends  │  Slowest steps     │
-│  Error heatmap   │  Recent traces      │  Token usage       │
-└─────────────────────────────────────────────────────────────┘
+<img width="1200" height="750" alt="architecture (1)" src="https://github.com/user-attachments/assets/512197a6-57b7-4b2e-b5c9-501ac1925718" />
 
 ---
 
