@@ -125,6 +125,13 @@ agentscope/
 
 ---
 
+## Dashboard Preview
+
+![Dashboard Overview](dashboard1.png)
+
+![Dashboard Traces](dashboard2.png)
+
+
 ## Running Tests
 
 ```bash
