@@ -1,8 +1,8 @@
 # 🔭 AgentScope — Open-Source LLM Observability Framework
 
-> Trace every LLM call. Score every output. Version every prompt. **100% free. Runs on a laptop.**
+> Trace every LLM call. Score every output. Version every prompt. 
 
-[![CI](https://github.com/yourusername/agentscope/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/agentscope/actions)
+[![CI](https://github.com/haarikaalla/llm-trace-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/haarikaalla/llm-trace-pilot/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![SQLite](https://img.shields.io/badge/storage-SQLite-green)](https://sqlite.org)
@@ -36,10 +36,16 @@ AgentScope is an open-source observability and evaluation platform for LLM agent
 
 ## Quickstart (3 commands)
 
-```bash
-git clone https://github.com/yourusername/agentscope.git
-cd agentscope
-python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
+git clone https://github.com/haarikaalla/llm-trace-pilot.git
+cd llm-trace-pilot
+
+# Mac/Linux
+python -m venv venv && source venv/bin/activate
+
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
 pip install -r requirements.txt
 
 # Generate demo traces
@@ -99,7 +105,7 @@ history = reg.history("summarize")  # all versions
 
 ---
 
-## Architecture
+## Project structure
 
 ```
 agentscope/
@@ -113,6 +119,10 @@ agentscope/
 └── tests/           # Full pytest test suite
 ```
 
+
+## Architecture
+<img width="1200" height="750" alt="architecture (1)" src="https://github.com/user-attachments/assets/512197a6-57b7-4b2e-b5c9-501ac1925718" />
+
 ---
 
 ## Running Tests
@@ -123,7 +133,7 @@ pytest tests/ -v
 
 ---
 
-## Tech Stack (all free)
+## Tech Stack 
 
 | Component | Technology |
 |---|---|
