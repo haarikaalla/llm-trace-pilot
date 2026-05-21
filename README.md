@@ -1,4 +1,4 @@
-# 🔭 AgentScope — Open-Source LLM Observability Framework
+# AgentScope — Open-Source LLM Observability Framework
 
 > Trace every LLM call. Score every output. Version every prompt. 
 
