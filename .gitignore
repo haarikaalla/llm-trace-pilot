@@ -12,4 +12,5 @@ dist/
 build/
 .DS_Store
 sim_test.db*
-_*.py
+# scratch scripts (single leading underscore only — never dunder files)
+/_[a-z]*.py
