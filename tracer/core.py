@@ -5,8 +5,30 @@ Wrap any function to automatically log every LLM call to SQLite.
 import time
 import uuid
 import functools
+from typing import Callable
 from tracer.storage import save_trace, calc_cost
 from tracer.session import get_session_id, next_step
+
+_trace_hooks: list[Callable[[dict], None]] = []
+
+
+def register_trace_hook(fn: Callable[[dict], None]) -> None:
+    """Subscribe to every saved trace (used by observability.integrations.tracer_bridge)."""
+    if fn not in _trace_hooks:
+        _trace_hooks.append(fn)
+
+
+def unregister_trace_hook(fn: Callable[[dict], None]) -> None:
+    if fn in _trace_hooks:
+        _trace_hooks.remove(fn)
+
+
+def _notify_hooks(record: dict) -> None:
+    for hook in list(_trace_hooks):
+        try:
+            hook(record)
+        except Exception:          # a failing hook must never break the traced call
+            pass
 
 def trace(name: str = None, model: str = None, tags: list = None):
     """
@@ -64,7 +86,7 @@ def trace(name: str = None, model: str = None, tags: list = None):
 
                 cost_usd = calc_cost(used_model, in_tok, out_tok)
 
-                save_trace({
+                record = {
                     "trace_id":      trace_id,
                     "session_id":    session_id,
                     "step_num":      step_num,
@@ -78,7 +100,9 @@ def trace(name: str = None, model: str = None, tags: list = None):
                     "cost_usd":      cost_usd,
                     "latency_ms":    latency_ms,
                     "error":         error,
-                })
+                }
+                save_trace(record)
+                _notify_hooks(record)
 
         return wrapper
     return decorator

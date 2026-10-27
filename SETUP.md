@@ -36,23 +36,34 @@ pip install -r requirements.txt
 
 ## Step 5: Generate demo data
 ```bash
-python examples/demo_agent.py
+python examples/demo_agent.py        # LLM traces (5 agent sessions + 1 error)
+python examples/simulate_logs.py     # 30 min of app/k8s/infra/CI logs with an injected outage
 ```
-This runs a simulated 5-step research agent and writes traces to agentscope.db.
+The first writes traces to agentscope.db; the second runs the full ingestion →
+detection → RCA → summary pipeline in-process and prints the incident it found.
 
 ## Step 6: Start the dashboard
 ```bash
 uvicorn dashboard.app:app --reload --port 8080
 ```
-Open your browser: http://localhost:8080
+Open http://localhost:8080 (LLM traces) and http://localhost:8080/observability
+(system health, anomalies, incidents, dependency graph, live feed).
 
 ## Step 7: Run the test suite
 ```bash
 pytest tests/ -v
 ```
-All tests should pass.
+All 76 tests should pass — no Kafka/OpenSearch needed.
 
-## Step 8: Push to GitHub
+## Step 8 (optional): Run the production-shaped stack
+```bash
+cd deploy/docker
+docker compose up --build -d
+```
+Brings up Kafka, OpenSearch and the five services. Kubernetes manifests live in
+`deploy/k8s` (`kubectl apply -k deploy/k8s`). Full guide: docs/DEPLOYMENT.md.
+
+## Step 9: Push to GitHub
 ```bash
 git init
 git add .
@@ -70,5 +81,11 @@ git push -u origin main
 **"ollama: command not found"** → Install Ollama from ollama.ai first
 
 **Dashboard shows empty charts** → Run `python examples/demo_agent.py` first to generate data
+
+**/observability shows no services** → Run `python examples/simulate_logs.py`, or POST logs to the ingestion API
+
+**No AI summary / `generated_by: deterministic`** → Ollama isn't reachable; the fallback summary is used. Start Ollama or set `OLLAMA_URL`
+
+**Windows: UnicodeEncodeError when piping output** → `set PYTHONIOENCODING=utf-8`
 
 **Port 8080 already in use** → Change to `--port 8090` or kill the other process

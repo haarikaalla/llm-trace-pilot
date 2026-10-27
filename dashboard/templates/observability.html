@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentScope — Incident Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d0d0f;--bg2:#141417;--bg3:#1c1c21;--bg4:#242429;--border:#2a2a32;--text:#e8e8f0;--muted:#7070a0;--accent:#7c6aff;--green:#4fd1a0;--warn:#f5a623;--red:#ff5f5f;--blue:#4a9eff;--purple:#a78bfa;--teal:#2dd4bf}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:24px 14px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{font-size:18px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}.logo span{color:var(--accent)}
+.logo-tag{font-size:11px;color:var(--muted);margin-bottom:28px;display:block}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:13px;margin-bottom:2px;cursor:pointer;text-decoration:none}
+.nav-item:hover,.nav-item.active{background:var(--bg3);color:var(--text)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-left:auto;animation:pulse 2s ease-in-out infinite}
+.dot.off{background:var(--red);box-shadow:0 0 6px var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sidebar-info{background:var(--bg3);border-radius:8px;padding:12px;font-size:11px;color:var(--muted);line-height:1.8;margin-top:18px}
+.main{flex:1;padding:28px 32px;min-width:0}
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.5px}.page-title small{font-size:14px;font-weight:400;color:var(--muted);margin-left:10px}
+.btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:12px;cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.stat-val{font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600}.card-sub{font-size:11px;color:var(--muted)}
+.card-body{padding:18px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.grid-2 .card{margin-bottom:0}
+.chart-wrap{position:relative;height:230px}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3)}
+td{padding:8px 12px;font-size:12px;border-bottom:1px solid rgba(42,42,50,.5);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:'JetBrains Mono','Fira Code',monospace;font-size:11px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap}
+.chip-green{background:rgba(79,209,160,.15);color:var(--green);border:1px solid rgba(79,209,160,.25)}
+.chip-red{background:rgba(255,95,95,.15);color:var(--red);border:1px solid rgba(255,95,95,.25)}
+.chip-warn{background:rgba(245,166,35,.15);color:var(--warn);border:1px solid rgba(245,166,35,.25)}
+.chip-blue{background:rgba(74,158,255,.15);color:var(--blue);border:1px solid rgba(74,158,255,.25)}
+.chip-purple{background:rgba(124,106,255,.15);color:var(--accent);border:1px solid rgba(124,106,255,.25)}
+.health{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.svc{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px}
+.svc.healthy{border-left:3px solid var(--green)}.svc.degraded{border-left:3px solid var(--warn)}.svc.critical{border-left:3px solid var(--red)}
+.svc-name{font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.svc-meta{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6}
+.bar{height:4px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--warn),var(--red))}
+.timeline{position:relative;padding-left:22px}
+.timeline:before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:14px;cursor:pointer}
+.tl-item:before{content:'';position:absolute;left:-19px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--bg2)}
+.tl-item.resolved:before{background:var(--green)}.tl-item.investigating:before{background:var(--warn)}
+.tl-title{font-weight:600;font-size:13px}.tl-meta{font-size:11px;color:var(--muted)}
+.summary{background:var(--bg3);border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12px;display:none}
+.tl-item.open .summary{display:block}
+.summary h4{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:10px 0 4px}.summary h4:first-child{margin-top:0}
+.summary ul{padding-left:16px}.summary li{margin-bottom:2px}
+#graph{width:100%;height:380px;background:var(--bg3);border-radius:8px}
+.feed{max-height:300px;overflow-y:auto;font-size:11px}
+.feed div{padding:5px 0;border-bottom:1px solid rgba(42,42,50,.5);display:flex;gap:10px}
+.feed .lvl{width:46px;flex-shrink:0;font-weight:600}
+.feed .svc-c{width:140px;flex-shrink:0;color:var(--teal);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed .msg{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{text-align:center;padding:30px;color:var(--muted)}
+.empty code{background:var(--bg3);color:var(--accent);padding:3px 8px;border-radius:5px;font-size:12px;font-family:monospace}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr)}.grid-2{grid-template-columns:1fr}}
+@media(max-width:900px){.sidebar{display:none}.main{padding:16px}}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="logo">Agent<span>Scope</span></div>
+  <span class="logo-tag">Observability &amp; Incident Intelligence</span>
+  <a class="nav-item" href="/">LLM Dashboard</a>
+  <a class="nav-item active" href="/observability">Incident Intelligence <span class="dot" id="livedot"></span></a>
+  <div class="sidebar-info" id="backends">
+    <strong style="color:var(--text)">Platform</strong><br>loading…
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-head">
+    <div class="page-title">Incident Intelligence <small>real-time system health, anomalies &amp; RCA</small></div>
+    <div>
+      <button class="btn" onclick="runDetect()">▶ Run detection now</button>
+      <button class="btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="stats"></div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">System Health</div><div class="card-sub">per-service composite health score (last 15 min)</div></div><span class="chip chip-blue" id="svc-count"></span></div>
+    <div class="card-body"><div class="health" id="health"></div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card"><div class="card-head"><div><div class="card-title">Error Trends</div><div class="card-sub">errors vs total events, 5-min buckets, last 6h</div></div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="errChart"></canvas></div></div></div>
+    <div class="card"><div class="card-head"><div><div class="card-title">Anomaly Scores</div><div class="card-sub">detector output over time (0–1), last 24h</div></div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="anomChart"></canvas></div></div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card"><div class="card-head"><div><div class="card-title">Incident Timeline</div><div class="card-sub">click an incident for the AI summary &amp; root cause</div></div><span class="chip chip-red" id="inc-count"></span></div>
+      <div class="card-body"><div class="timeline" id="timeline"></div></div></div>
+    <div class="card"><div class="card-head"><div><div class="card-title">Service Dependency Graph</div><div class="card-sub">learned from traces &amp; log hints · edge width = call volume · red = errors</div></div></div>
+      <div class="card-body"><svg id="graph"></svg></div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card"><div class="card-head"><div><div class="card-title">Recent Anomalies</div></div></div>
+      <div style="max-height:320px;overflow:auto"><table id="anoms"><thead><tr><th>Time</th><th>Service</th><th>Kind</th><th>Score</th><th>Description</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><div class="card-head"><div><div class="card-title">Live Feed</div><div class="card-sub">server-sent events: logs · alerts · incidents</div></div></div>
+      <div class="card-body"><div class="feed" id="feed"></div></div></div>
+  </div>
+</main>
+
+<script>
+const api = p => fetch('/api/obs' + p).then(r => r.json());
+const tc='#7070a0', gc='rgba(255,255,255,0.05)';
+const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:11},boxWidth:12}}},
+  scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:10}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},beginAtZero:true}}};
+let errChart, anomChart;
+const fmt = s => s ? s.replace('T',' ').slice(5,19) : '—';
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function loadAll(){
+  const [ov, health, trends, anoms, tl, graph] = await Promise.all([
+    api('/overview'), api('/health/services'), api('/trends/errors?hours=6&bucket_sec=300'),
+    api('/anomalies?hours=24&limit=300'), api('/incidents/timeline?limit=30'), api('/dependencies')]);
+  renderStats(ov); renderHealth(health); renderTrends(trends); renderAnomalies(anoms); renderTimeline(tl); renderGraph(graph, health);
+  document.getElementById('backends').innerHTML = `<strong style="color:var(--text)">Platform</strong><br>
+    <span style="color:var(--green)">●</span> bus: ${ov.backends.event_bus}<br><span style="color:var(--green)">●</span> index: ${ov.backends.log_index}<br>
+    <span style="color:var(--green)">●</span> ${ov.total_events.toLocaleString()} events indexed<br>
+    <span style="color:var(--green)">●</span> ${ov.anomalies_total} anomalies · ${ov.total_incidents} incidents`;
+}
+function renderStats(o){
+  const cards=[['Events indexed',o.total_events.toLocaleString(),'all sources','accent'],['Services',o.services,`${o.healthy} healthy`,'blue'],
+    ['Degraded',o.degraded,'health ≥ 0.35','warn'],['Critical',o.critical,'health ≥ 0.7','red'],
+    ['Open incidents',o.open_incidents,`${o.total_incidents} total`,'red'],['Alerts 24h',o.alerts_24h,`${o.anomalies_total} anomalies`,'purple']];
+  document.getElementById('stats').innerHTML=cards.map(([l,v,s,c])=>`<div class="stat"><div class="stat-label">${l}</div><div class="stat-val" style="color:var(--${c})">${v}</div><div class="stat-sub">${s}</div></div>`).join('');
+}
+function renderHealth(h){
+  document.getElementById('svc-count').textContent=h.length+' services';
+  if(!h.length){document.getElementById('health').innerHTML='<div class="empty">No events yet. Run <code>python examples/simulate_logs.py</code></div>';return;}
+  document.getElementById('health').innerHTML=h.map(s=>`<div class="svc ${s.status}"><div class="svc-name" title="${esc(s.service)}">${esc(s.service)}</div>
+    <div class="svc-meta">err ${(s.error_rate*100).toFixed(1)}% · ${s.event_count} ev${s.avg_latency_ms?` · ${Math.round(s.avg_latency_ms)}ms`:''}${s.open_incidents?` · <span style="color:var(--red)">${s.open_incidents} inc</span>`:''}</div>
+    <div class="bar"><i style="width:${Math.max(3,s.anomaly_score*100)}%"></i></div></div>`).join('');
+}
+function renderTrends(rows){
+  const buckets=[...new Set(rows.map(r=>r.bucket))].sort();
+  const agg=Object.fromEntries(buckets.map(b=>[b,{c:0,e:0,w:0}]));
+  rows.forEach(r=>{agg[r.bucket].c+=r.count;agg[r.bucket].e+=r.errors;agg[r.bucket].w+=r.warnings||0;});
+  const data={labels:buckets.map(b=>b.slice(11,16)),datasets:[
+    {type:'line',label:'Errors',data:buckets.map(b=>agg[b].e),borderColor:'#ff5f5f',backgroundColor:'rgba(255,95,95,.15)',fill:true,tension:.35,pointRadius:2,yAxisID:'y'},
+    {type:'line',label:'Warnings',data:buckets.map(b=>agg[b].w),borderColor:'#f5a623',tension:.35,pointRadius:0,yAxisID:'y'},
+    {type:'bar',label:'Total events',data:buckets.map(b=>agg[b].c),backgroundColor:'rgba(124,106,255,.25)',yAxisID:'y1'}]};
+  const opts={...baseOpts,scales:{...baseOpts.scales,y1:{position:'right',grid:{display:false},ticks:{color:tc,font:{size:10}},beginAtZero:true}}};
+  if(errChart){errChart.data=data;errChart.update();}else errChart=new Chart(document.getElementById('errChart'),{data,options:opts});
+}
+function renderAnomalies(a){
+  const kinds=[...new Set(a.map(x=>x.kind))];
+  const colors={error_spike:'#ff5f5f',latency_degradation:'#f5a623',volume_anomaly:'#4a9eff',novel_pattern:'#a78bfa',pattern_burst:'#2dd4bf',service_degradation:'#ff8c5f',incident_prediction:'#7c6aff'};
+  const data={datasets:kinds.map(k=>({label:k,data:a.filter(x=>x.kind===k).map(x=>({x:new Date(x.window_start).getTime(),y:x.score})),backgroundColor:colors[k]||'#fff',pointRadius:5}))};
+  const now=Date.now();
+  const opts={...baseOpts,scales:{x:{type:'linear',min:now-24*3600e3,max:now,grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:9,callback:v=>new Date(v).toTimeString().slice(0,5)}},y:{min:0,max:1,grid:{color:gc},ticks:{color:tc,font:{size:10}}}}};
+  if(anomChart){anomChart.data=data;anomChart.options=opts;anomChart.update();}else anomChart=new Chart(document.getElementById('anomChart'),{type:'scatter',data,options:opts});
+  document.querySelector('#anoms tbody').innerHTML=a.slice(0,60).map(x=>`<tr><td class="mono">${fmt(x.detected_at)}</td><td style="color:var(--teal)">${esc(x.service)}</td>
+    <td><span class="chip chip-${x.severity==='FATAL'||x.severity==='ERROR'?'red':'warn'}">${x.kind}</span></td><td class="mono">${x.score.toFixed(2)}</td><td style="color:var(--muted)">${esc(x.description)}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="empty">No anomalies detected</td></tr>';
+}
+function renderTimeline(incs){
+  incs=incs.filter(i=>!i.title.startsWith('[merged into'));
+  const rank={open:0,investigating:1,mitigated:2,resolved:3};
+  incs.sort((a,b)=>(rank[a.status]-rank[b.status])||(b.started_at<a.started_at?-1:1));
+  document.getElementById('inc-count').textContent=incs.filter(i=>i.status!=='resolved').length+' open';
+  if(!incs.length){document.getElementById('timeline').innerHTML='<div class="empty">No incidents 🎉</div>';return;}
+  document.getElementById('timeline').innerHTML=incs.map(i=>{const s=i.summary||{},rc=i.root_cause||{};return `
+   <div class="tl-item ${i.status}" onclick="this.classList.toggle('open')">
+     <div class="tl-title"><span class="chip chip-${i.severity==='FATAL'||i.severity==='ERROR'?'red':'warn'}">${i.severity}</span> ${esc(i.title)} <span class="chip chip-${i.status==='resolved'?'green':i.status==='investigating'?'warn':'red'}">${i.status}</span></div>
+     <div class="tl-meta mono">${i.incident_id} · ${fmt(i.started_at)}${i.resolved_at?' → '+fmt(i.resolved_at):''} · ${i.services.length} services · ${i.anomaly_ids.length} anomalies</div>
+     <div class="summary">
+       ${s.what_happened?`<h4>What happened</h4><p>${esc(s.what_happened)}</p>`:''}
+       ${s.impacted_services?`<h4>Impacted services</h4><p>${s.impacted_services.map(esc).join(', ')}</p>`:''}
+       ${rc.primary?`<h4>Root cause analysis</h4><p>Primary suspect: <b style="color:var(--red)">${esc(rc.primary)}</b> (confidence ${rc.primary_confidence})</p>`:''}
+       ${s.possible_root_causes?`<h4>Possible root causes</h4><ul>${s.possible_root_causes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:''}
+       ${s.recommended_actions?`<h4>Recommended actions</h4><ul>${s.recommended_actions.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:''}
+       ${(rc.similar_incidents||[]).length?`<h4>Similar past incidents</h4><ul>${rc.similar_incidents.map(x=>`<li>${x.incident_id} — ${(x.similarity*100).toFixed(0)}% similar</li>`).join('')}</ul>`:''}
+       <p style="margin-top:8px;color:var(--muted)">summary by: ${esc(s.generated_by||'n/a')} · <a href="#" style="color:var(--accent)" onclick="event.stopPropagation();reanalyze('${i.incident_id}');return false;">re-analyze</a></p>
+     </div></div>`}).join('');
+}
+function renderGraph(g, health){
+  const svg=document.getElementById('graph'); const W=svg.clientWidth||600,H=380; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML='';
+  const nodes=g.nodes.map(n=>typeof n==='string'?{id:n,status:'unknown'}:n); if(!nodes.length){svg.innerHTML=`<text x="${W/2}" y="${H/2}" fill="#7070a0" text-anchor="middle" font-size="12">No dependencies learned yet</text>`;return;}
+  const idx=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
+  const edges=g.edges.filter(e=>idx[e.source]!==undefined&&idx[e.target]!==undefined);
+  // x by role: pure callers (gateways) left, pure dependencies (databases) right — cycle-proof, volume-weighted
+  const inC={},outC={}; nodes.forEach(n=>{inC[n.id]=0;outC[n.id]=0;}); edges.forEach(e=>{outC[e.source]+=e.calls||1;inC[e.target]+=e.calls||1;});
+  const col0={}; nodes.forEach(n=>{const t=inC[n.id]+outC[n.id]; col0[n.id]=t?1-outC[n.id]/t:0.5;});
+  const anchorX=id=>70+(W-140)*col0[id];
+  const pos={}; nodes.forEach((n,i)=>{pos[n.id]={x:anchorX(n.id),y:40+((i*0.618)%1)*(H-80),vx:0,vy:0};});
+  for(let it=0;it<250;it++){
+    nodes.forEach(a=>{nodes.forEach(b=>{if(a===b)return;const pa=pos[a.id],pb=pos[b.id];let dx=pa.x-pb.x,dy=pa.y-pb.y,d2=dx*dx+dy*dy+0.01,d=Math.sqrt(d2);const f=2600/d2;pa.vx+=dx/d*f;pa.vy+=dy/d*f;});});
+    edges.forEach(e=>{const a=pos[e.source],b=pos[e.target];const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,f=(d-110)*0.02;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;});
+    nodes.forEach(n=>{const p=pos[n.id];p.vx+=(anchorX(n.id)-p.x)*0.05;p.vy+=(H/2-p.y)*0.004;p.x=Math.max(30,Math.min(W-30,p.x+p.vx*0.5));p.y=Math.max(28,Math.min(H-34,p.y+p.vy*0.5));p.vx*=0.6;p.vy*=0.6;});
+  }
+  const col={healthy:'#4fd1a0',degraded:'#f5a623',critical:'#ff5f5f',unknown:'#7070a0'};
+  const maxCalls=Math.max(1,...edges.map(e=>e.calls));
+  let s='<defs><marker id="arr" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3a48"/></marker></defs>';
+  edges.forEach(e=>{const a=pos[e.source],b=pos[e.target]; const err=e.error_calls/Math.max(1,e.calls);
+    s+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${err>0.1?'rgba(255,95,95,.7)':'#3a3a48'}" stroke-width="${1+3*e.calls/maxCalls}" marker-end="url(#arr)"><title>${e.source} → ${e.target}: ${e.calls} calls, ${e.error_calls} errors</title></line>`;});
+  nodes.forEach(n=>{const p=pos[n.id]; s+=`<g><circle cx="${p.x}" cy="${p.y}" r="14" fill="#1c1c21" stroke="${col[n.status]||col.unknown}" stroke-width="3"/>
+    <text x="${p.x}" y="${p.y+28}" fill="#e8e8f0" text-anchor="middle" font-size="10">${esc(n.id.length>18?n.id.slice(0,17)+'…':n.id)}</text><title>${n.id} (${n.status})</title></g>`;});
+  svg.innerHTML=s;
+}
+async function runDetect(){ await fetch('/api/obs/detect',{method:'POST'}); loadAll(); }
+async function reanalyze(id){ await fetch(`/api/obs/incidents/${id}/analyze`,{method:'POST'}); loadAll(); }
+
+// live feed
+const feed=document.getElementById('feed'); const lvlColor={ERROR:'var(--red)',FATAL:'var(--red)',WARN:'var(--warn)',INFO:'var(--muted)',DEBUG:'var(--muted)'};
+function push(html){const d=document.createElement('div');d.innerHTML=html;feed.prepend(d);while(feed.children.length>200)feed.lastChild.remove();}
+try{
+  const es=new EventSource('/api/obs/stream');
+  es.addEventListener('log',e=>{const l=JSON.parse(e.data);push(`<span class="lvl" style="color:${lvlColor[l.level]||tc}">${l.level}</span><span class="svc-c">${esc(l.service)}</span><span class="msg">${esc(l.message)}</span>`);});
+  es.addEventListener('alert',e=>{const a=JSON.parse(e.data);push(`<span class="lvl" style="color:var(--red)">ALERT</span><span class="svc-c">${esc(a.service)}</span><span class="msg" style="color:var(--text)">${esc(a.title)} — ${esc(a.message)}</span>`);});
+  es.addEventListener('incident',e=>{const i=JSON.parse(e.data);push(`<span class="lvl" style="color:var(--warn)">INC</span><span class="svc-c">${i.incident_id}</span><span class="msg" style="color:var(--text)">${esc(i.title)} [${i.status}]</span>`);loadAll();});
+  es.onerror=()=>document.getElementById('livedot').classList.add('off');
+}catch(e){}
+loadAll(); setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

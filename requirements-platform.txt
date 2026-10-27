@@ -1,0 +1,4 @@
+# Production backends (optional for local dev — the platform falls back to
+# in-memory bus + SQLite when these are absent).
+kafka-python==2.0.2
+opensearch-py==2.6.0

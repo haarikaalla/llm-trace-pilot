@@ -1,0 +1,118 @@
+# Full production-shaped stack on one machine: Kafka (KRaft) + OpenSearch +
+# the five AgentScope services. `docker compose up --build` then open :8080.
+#
+# Lightweight variant (no Kafka/OpenSearch):  docker compose --profile lite up dashboard-lite
+name: agentscope
+
+x-app: &app
+  build: { context: .., dockerfile: Dockerfile }
+  image: agentscope:latest
+  restart: unless-stopped
+  environment: &app-env
+    EVENT_BUS: kafka
+    KAFKA_BOOTSTRAP: kafka:9092
+    LOG_INDEX: opensearch
+    OPENSEARCH_URL: http://opensearch:9200
+    OBSERVABILITY_DB: /data/agentscope.db
+    AGENTSCOPE_DB: /data/agentscope.db
+    OLLAMA_URL: http://host.docker.internal:11434/api/generate
+    ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    INGEST_API_KEY: ${INGEST_API_KEY:-}
+    LOG_LEVEL: INFO
+  volumes: [ "appdata:/data" ]
+  depends_on:
+    kafka: { condition: service_healthy }
+    opensearch: { condition: service_healthy }
+
+services:
+  kafka:
+    image: apache/kafka:3.7.0
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 12
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 48
+      CLUSTER_ID: agentscope-kraft-cluster-01
+    ports: [ "29092:29092" ]
+    volumes: [ "kafkadata:/var/lib/kafka/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+      bootstrap.memory_lock: "true"
+    ulimits: { memlock: { soft: -1, hard: -1 } }
+    ports: [ "9200:9200" ]
+    volumes: [ "osdata:/usr/share/opensearch/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.15.0
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    ports: [ "5601:5601" ]
+    depends_on: [ opensearch ]
+    profiles: [ "tools" ]
+
+  ingestion-api:
+    <<: *app
+    environment: { <<: *app-env, SERVICE_ROLE: ingestion-api, PORT: "8081", WEB_CONCURRENCY: "4" }
+    ports: [ "8081:8081" ]
+
+  processor:
+    <<: *app
+    environment: { <<: *app-env, SERVICE_ROLE: processor }
+    deploy: { replicas: 2 }
+
+  detector:
+    <<: *app
+    environment: { <<: *app-env, SERVICE_ROLE: detector, DETECTOR_INTERVAL_SEC: "30" }
+
+  incident-api:
+    <<: *app
+    environment: { <<: *app-env, SERVICE_ROLE: incident-api, PORT: "8082" }
+    ports: [ "8082:8082" ]
+
+  dashboard:
+    <<: *app
+    environment: { <<: *app-env, SERVICE_ROLE: dashboard, PORT: "8080", DASHBOARD_BACKGROUND: "0" }
+    ports: [ "8080:8080" ]
+
+  # ── lite profile: everything in one container, no Kafka/OpenSearch ──────
+  dashboard-lite:
+    build: { context: .., dockerfile: Dockerfile }
+    image: agentscope:latest
+    profiles: [ "lite" ]
+    environment:
+      SERVICE_ROLE: dashboard
+      EVENT_BUS: memory
+      LOG_INDEX: sqlite
+      OLLAMA_URL: http://host.docker.internal:11434/api/generate
+    ports: [ "8080:8080" ]
+    volumes: [ "appdata:/data" ]
+
+volumes:
+  appdata: {}
+  kafkadata: {}
+  osdata: {}

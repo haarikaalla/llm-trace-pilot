@@ -1,6 +1,8 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +12,24 @@ from tracer.storage import (
     init_db, get_recent_traces, get_stats_summary,
     get_cost_by_day, get_slowest_steps, get_eval_trend, get_failure_heatmap
 )
+from observability.services.platform import get_platform
+from observability.services.incident_api import router as obs_router
+from observability.integrations import enable_tracer_bridge
 
-app = FastAPI(title="llm-trace-pilot", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    platform = get_platform()
+    enable_tracer_bridge(platform)
+    if platform.inline and os.environ.get("DASHBOARD_BACKGROUND", "1") == "1":
+        platform.start_background()
+    yield
+    platform.stop_background()
+
+
+app = FastAPI(title="llm-trace-pilot", version="2.0.0", lifespan=lifespan)
+app.include_router(obs_router)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE, "templates"))
@@ -19,10 +37,6 @@ templates = Jinja2Templates(directory=os.path.join(BASE, "templates"))
 static_dir = os.path.join(BASE, "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
@@ -36,6 +50,12 @@ async def dashboard(request: Request):
     }
     return templates.TemplateResponse(request=request, name="index.html", context=context)
 
+
+@app.get("/observability", response_class=HTMLResponse)
+async def observability_page(request: Request):
+    return templates.TemplateResponse(request=request, name="observability.html", context={})
+
+
 @app.get("/api/stats")
 async def api_stats():
     return JSONResponse({
@@ -45,3 +65,8 @@ async def api_stats():
         "eval_trend":    get_eval_trend(14),
         "recent_traces": get_recent_traces(60),
     })
+
+
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}

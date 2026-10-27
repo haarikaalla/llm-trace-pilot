@@ -1,0 +1,25 @@
+# Example: ship this workflow's own job logs to AgentScope after every run.
+# Copy into any repo's .github/workflows/ and set AGENTSCOPE_URL / AGENTSCOPE_API_KEY secrets.
+name: Ship CI logs to AgentScope
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    permissions: { actions: read }
+    steps:
+      - name: Download job logs
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/logs" > logs.zip
+          unzip -o -q logs.zip -d logs
+          find logs -name '*.txt' -exec cat {} + > all.txt
+      - name: POST to ingestion API
+        run: |
+          curl -sS -X POST "${{ secrets.AGENTSCOPE_URL }}/v1/ingest/bulk?source_type=cicd&service=ci-${{ github.event.workflow_run.name }}" \
+            -H "X-Api-Key: ${{ secrets.AGENTSCOPE_API_KEY }}" -H "Content-Type: text/plain" \
+            --data-binary @all.txt

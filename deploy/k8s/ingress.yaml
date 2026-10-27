@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agentscope
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 64m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # SSE live feed
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: agentscope.example.com
+      http:
+        paths:
+          - path: /v1/ingest
+            pathType: Prefix
+            backend: { service: { name: ingestion-api, port: { number: 8081 } } }
+          - path: /api/obs
+            pathType: Prefix
+            backend: { service: { name: incident-api, port: { number: 8082 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: dashboard, port: { number: 8080 } } }

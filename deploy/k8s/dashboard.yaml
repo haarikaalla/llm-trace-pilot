@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+spec:
+  selector: { app: dashboard }
+  ports: [ { name: http, port: 8080, targetPort: 8080 } ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: dashboard } }
+  template:
+    metadata: { labels: { app: dashboard } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 999, fsGroup: 999, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: dashboard
+          image: agentscope
+          env:
+            - { name: SERVICE_ROLE, value: dashboard }
+            - { name: PORT, value: "8080" }
+            - { name: DASHBOARD_BACKGROUND, value: "0" }   # workers own processing/detection in k8s
+          envFrom:
+            - configMapRef: { name: agentscope-config }
+            - secretRef: { name: agentscope-secrets }
+          ports: [ { containerPort: 8080 } ]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [ { name: state, mountPath: /data }, { name: tmp, mountPath: /tmp } ]
+          livenessProbe:  { httpGet: { path: /healthz, port: 8080 }, periodSeconds: 15 }
+          readinessProbe: { httpGet: { path: /healthz, port: 8080 }, periodSeconds: 10 }
+      volumes:
+        - { name: state, persistentVolumeClaim: { claimName: agentscope-state } }
+        - { name: tmp, emptyDir: {} }

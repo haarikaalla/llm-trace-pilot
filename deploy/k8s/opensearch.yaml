@@ -1,0 +1,50 @@
+# Single-node OpenSearch for dev/staging. Production: OpenSearch Operator or
+# a managed domain with 3+ data nodes, dedicated masters, ISM rollover policy.
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+spec:
+  selector: { app: opensearch }
+  ports:
+    - { name: http, port: 9200 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch
+spec:
+  serviceName: opensearch
+  replicas: 1
+  selector: { matchLabels: { app: opensearch } }
+  template:
+    metadata: { labels: { app: opensearch } }
+    spec:
+      securityContext: { fsGroup: 1000 }
+      initContainers:
+        - name: sysctl
+          image: busybox:1.36
+          command: ["sh", "-c", "sysctl -w vm.max_map_count=262144 || true"]
+          securityContext: { privileged: true }
+      containers:
+        - name: opensearch
+          image: opensearchproject/opensearch:2.15.0
+          ports: [ { containerPort: 9200 } ]
+          env:
+            - { name: discovery.type, value: single-node }
+            - { name: DISABLE_SECURITY_PLUGIN, value: "true" }
+            - { name: OPENSEARCH_JAVA_OPTS, value: "-Xms2g -Xmx2g" }
+          resources:
+            requests: { cpu: "1", memory: 3Gi }
+            limits: { cpu: "2", memory: 4Gi }
+          volumeMounts:
+            - { name: data, mountPath: /usr/share/opensearch/data }
+          readinessProbe:
+            httpGet: { path: /_cluster/health, port: 9200 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        resources: { requests: { storage: 200Gi } }

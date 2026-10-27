@@ -11,3 +11,5 @@ __pycache__/
 dist/
 build/
 .DS_Store
+sim_test.db*
+_*.py

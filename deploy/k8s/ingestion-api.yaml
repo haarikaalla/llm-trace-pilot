@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-api
+spec:
+  selector: { app: ingestion-api }
+  ports: [ { name: http, port: 8081, targetPort: 8081 } ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-api
+spec:
+  replicas: 3
+  strategy: { rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: ingestion-api } }
+  template:
+    metadata:
+      labels: { app: ingestion-api }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8081", prometheus.io/path: /metrics }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 999, seccompProfile: { type: RuntimeDefault } }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: ingestion-api } }
+      containers:
+        - name: api
+          image: agentscope
+          env:
+            - { name: SERVICE_ROLE, value: ingestion-api }
+            - { name: PORT, value: "8081" }
+            - { name: WEB_CONCURRENCY, value: "4" }
+          envFrom:
+            - configMapRef: { name: agentscope-config }
+            - secretRef: { name: agentscope-secrets }
+          ports: [ { containerPort: 8081 } ]
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [ { name: data, mountPath: /data }, { name: tmp, mountPath: /tmp } ]
+          livenessProbe:  { httpGet: { path: /healthz, port: 8081 }, periodSeconds: 15 }
+          readinessProbe: { httpGet: { path: /readyz,  port: 8081 }, periodSeconds: 10 }
+      volumes:
+        - { name: data, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ingestion-api
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: ingestion-api }
+  minReplicas: 3
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingestion-api
+spec:
+  minAvailable: 2
+  selector: { matchLabels: { app: ingestion-api } }

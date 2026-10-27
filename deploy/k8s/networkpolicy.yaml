@@ -1,0 +1,42 @@
+# Default-deny inside the namespace; allow only the documented call paths.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kafka
+spec:
+  podSelector: { matchLabels: { app: kafka } }
+  ingress:
+    - from:
+        - podSelector: { matchExpressions: [ { key: app, operator: In, values: [ingestion-api, processor, detector, incident-api, dashboard, kafka] } ] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-opensearch
+spec:
+  podSelector: { matchLabels: { app: opensearch } }
+  ingress:
+    - from:
+        - podSelector: { matchExpressions: [ { key: app, operator: In, values: [ingestion-api, processor, detector, incident-api, dashboard] } ] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-http-edge
+spec:
+  podSelector: { matchExpressions: [ { key: app, operator: In, values: [ingestion-api, incident-api, dashboard] } ] }
+  ingress:
+    - from:
+        - namespaceSelector: {}      # ingress controller + fluent-bit on every node
+      ports:
+        - { port: 8080 }
+        - { port: 8081 }
+        - { port: 8082 }

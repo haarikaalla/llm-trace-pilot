@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentscope-config
+data:
+  EVENT_BUS: "kafka"
+  KAFKA_BOOTSTRAP: "kafka:9092"
+  KAFKA_GROUP_ID: "agentscope"
+  KAFKA_LINGER_MS: "20"
+  KAFKA_COMPRESSION: "gzip"
+  LOG_INDEX: "opensearch"
+  OPENSEARCH_URL: "http://opensearch:9200"
+  OPENSEARCH_INDEX_PREFIX: "logs"
+  OBSERVABILITY_DB: "/data/agentscope.db"
+  AGENTSCOPE_DB: "/data/agentscope.db"
+  PIPELINE_BATCH_SIZE: "1000"
+  PIPELINE_FLUSH_MS: "250"
+  DETECTION_WINDOW_SEC: "60"
+  DETECTION_HISTORY_WINDOWS: "30"
+  ANOMALY_THRESHOLD: "0.7"
+  DETECTOR_INTERVAL_SEC: "30"
+  ALERT_DEDUP_SEC: "300"
+  INCIDENT_GROUP_WINDOW_SEC: "600"
+  AI_SUMMARIES: "true"
+  SUMMARY_MODEL: "llama3.2"
+  OLLAMA_URL: "http://ollama.agentscope.svc.cluster.local:11434/api/generate"
+  REDACT_PII: "true"
+  LOG_LEVEL: "INFO"
